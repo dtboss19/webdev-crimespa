@@ -11,6 +11,43 @@ let neighborhoods = ref([]);
 let incidents = ref([]);
 let filteredIncidents = ref([]);
 
+// Filter state
+let filters = reactive({
+    incident_types: [],
+    neighborhoods: [],
+    start_date: '',
+    end_date: '',
+    max_incidents: 1000
+});
+
+// Grouped incident types
+const incidentTypeGroups = {
+    'Murder/Homicide': [100, 110, 120],
+    'Rape': [210, 220],
+    'Robbery': [300, 310, 311, 312, 313, 314, 320, 321, 322, 323, 324, 330, 331, 333, 334, 340, 341, 342, 343, 344, 350, 351, 352, 353, 360, 361, 363, 364, 370, 371, 372, 373, 374],
+    'Aggravated Assault': [400, 410, 411, 412, 420, 421, 422, 430, 431, 432, 440, 450, 451, 452, 453],
+    'Burglary': [500, 510, 511, 513, 515, 516, 520, 521, 523, 525, 526, 530, 531, 533, 535, 536, 540, 541, 543, 545, 546, 550, 551, 553, 555, 556, 560, 561, 563, 565, 566],
+    'Theft': [600, 603, 610, 611, 612, 613, 614, 620, 621, 622, 623, 630, 631, 632, 633, 640, 641, 642, 643, 650, 651, 652, 653, 660, 661, 662, 663],
+    'Auto Theft': [700, 710, 711, 712, 720, 721, 722],
+    'Assault': [810, 820, 822, 823, 830, 840, 841, 842, 843, 850, 851, 852, 853, 860, 861, 862, 863, 870, 871, 872, 873, 880, 882, 883],
+    'Arson': [900, 901, 903, 905, 910, 911, 913, 915, 920, 921, 922, 923, 925, 930, 931, 933, 935, 940, 941, 942, 943, 945, 950, 951, 953, 955, 960, 961, 963, 965, 970, 971, 972, 973, 975, 980, 981, 982, 983, 985],
+    'Other Assault': [1000, 1010, 1020, 1030, 1040, 1050, 1060, 1070, 1080, 1090, 1091, 1092],
+    'Forgery/Fraud': [1100, 1110, 1120, 1125, 1130, 1135, 1140, 1145, 1150, 1160],
+    'Stolen Property': [1200, 1210, 1220, 1230, 1231, 1240, 1241, 1242, 1243, 1244, 1245, 1246, 1250],
+    'Vandalism': [1400, 1410, 1415, 1416, 1420, 1425, 1426, 1430, 1435, 1436],
+    'Weapons': [1500, 1510, 1515, 1520, 1525, 1530, 1535, 1540, 1545, 1550, 1555, 1560, 1565],
+    'Prostitution': [1600, 1610, 1620, 1630],
+    'Other Sex Crimes': [1700, 1710, 1720, 1730, 1740, 1750, 1760, 1770, 1780, 1790, 1791],
+    'Narcotics': [1800, 1810, 1811, 1812, 1813, 1814, 1815, 1820, 1822, 1823, 1824, 1825, 1830, 1835, 1840, 1841, 1842, 1843, 1844, 1845, 1850, 1855, 1860, 1865, 1870, 1880, 1885],
+    'Gambling': [2000, 2010, 2020, 2030],
+    'Against Family': [2100, 2110, 2120, 2130],
+    'Liquor Laws': [2200, 2210, 2300],
+    'Public Order': [2310, 2320, 2330, 2340, 2350, 2360, 2370, 2380, 2390, 2400, 2410, 2420, 2430],
+    'Misc Crimes': [2500, 2510, 2520, 2530, 2540, 2600, 2610, 2620, 2630, 2640, 2650, 2660, 2670, 2680, 2690],
+    'Traffic': [3000, 3010, 3020, 3030, 3040, 3050, 3060, 3061],
+    'Other': [9600, 9700, 9710, 9950, 9986]
+};
+
 // New incident form
 let newIncident = reactive({
     case_number: '',
@@ -153,25 +190,7 @@ async function initializeCrimes() {
         console.log('Neighborhoods loaded:', neighborhoods.value.length);
         
         // Fetch initial 1000 crimes
-        console.log('Fetching incidents...');
-        loading_message.value = 'Fetching crime incidents...';
-        const incidentsResponse = await fetch(`${crime_url.value}/incidents?limit=1000`);
-        
-        console.log('Incidents response status:', incidentsResponse.status, incidentsResponse.statusText);
-        if (!incidentsResponse.ok) {
-            const errorText = await incidentsResponse.text();
-            console.error('Incidents response error:', errorText);
-            throw new Error(`Failed to fetch incidents: ${incidentsResponse.status} ${incidentsResponse.statusText}`);
-        }
-        const incidentsText = await incidentsResponse.text();
-        console.log('Incidents response (first 200 chars):', incidentsText.substring(0, 200));
-        try {
-            incidents.value = JSON.parse(incidentsText);
-        } catch (parseError) {
-            console.error('Failed to parse incidents JSON:', parseError, 'Response:', incidentsText);
-            throw new Error('Invalid JSON response from incidents endpoint');
-        }
-        console.log('Incidents loaded:', incidents.value.length);
+        await fetchIncidents();
         
         // Add neighborhood markers first
         loading_message.value = 'Adding markers to map...';
@@ -188,6 +207,64 @@ async function initializeCrimes() {
         loading_message.value = '';
         console.error('Error fetching data:', error);
         alert('Error connecting to API: ' + error.message + '\n\nCheck the browser console (F12) for more details.\n\nMake sure:\n1. Your API server is running on ' + crime_url.value + '\n2. CORS is enabled in your server code\n3. The URL is correct');
+    }
+}
+
+// Fetch incidents with current filter settings
+async function fetchIncidents() {
+    console.log('Fetching incidents...');
+    loading_message.value = 'Fetching crime incidents...';
+    
+    // Build query parameters
+    let queryParams = new URLSearchParams();
+    queryParams.append('limit', filters.max_incidents.toString());
+    
+    if (filters.incident_types.length > 0) {
+        queryParams.append('code', filters.incident_types.join(','));
+    }
+    if (filters.neighborhoods.length > 0) {
+        queryParams.append('neighborhood', filters.neighborhoods.join(','));
+    }
+    if (filters.start_date) {
+        queryParams.append('start_date', filters.start_date);
+    }
+    if (filters.end_date) {
+        queryParams.append('end_date', filters.end_date);
+    }
+    
+    const incidentsUrl = `${crime_url.value}/incidents?${queryParams.toString()}`;
+    console.log('Incidents URL:', incidentsUrl);
+    const incidentsResponse = await fetch(incidentsUrl);
+    
+    console.log('Incidents response status:', incidentsResponse.status, incidentsResponse.statusText);
+    if (!incidentsResponse.ok) {
+        const errorText = await incidentsResponse.text();
+        console.error('Incidents response error:', errorText);
+        throw new Error(`Failed to fetch incidents: ${incidentsResponse.status} ${incidentsResponse.statusText}`);
+    }
+    const incidentsText = await incidentsResponse.text();
+    console.log('Incidents response (first 200 chars):', incidentsText.substring(0, 200));
+    try {
+        incidents.value = JSON.parse(incidentsText);
+    } catch (parseError) {
+        console.error('Failed to parse incidents JSON:', parseError, 'Response:', incidentsText);
+        throw new Error('Invalid JSON response from incidents endpoint');
+    }
+    console.log('Incidents loaded:', incidents.value.length);
+}
+
+// Apply filters and fetch new data
+async function applyFilters() {
+    loading.value = true;
+    try {
+        await fetchIncidents();
+        updateMarkerPopups();
+        filterCrimesByVisibleArea();
+        loading.value = false;
+    } catch (error) {
+        loading.value = false;
+        console.error('Error applying filters:', error);
+        alert('Error fetching filtered data: ' + error.message);
     }
 }
 
@@ -296,6 +373,28 @@ function updateMarkerPopups() {
     });
 }
 
+// Toggle incident type group
+function toggleIncidentTypeGroup(groupName) {
+    const groupCodes = incidentTypeGroups[groupName];
+    const allSelected = groupCodes.every(code => filters.incident_types.includes(code));
+    
+    if (allSelected) {
+        filters.incident_types = filters.incident_types.filter(code => !groupCodes.includes(code));
+    } else {
+        groupCodes.forEach(code => {
+            if (!filters.incident_types.includes(code)) {
+                filters.incident_types.push(code);
+            }
+        });
+    }
+}
+
+// Check if an incident type group is selected
+function isIncidentTypeGroupSelected(groupName) {
+    const groupCodes = incidentTypeGroups[groupName];
+    return groupCodes.some(code => filters.incident_types.includes(code));
+}
+
 // Submit new incident form
 async function submitNewIncident() {
     form_error.value = '';
@@ -339,9 +438,8 @@ async function submitNewIncident() {
             newIncident.neighborhood_number = '';
             newIncident.block = '';
             
-            // Refresh incidents
-            const incidentsResponse = await fetch(`${crime_url.value}/incidents?limit=1000`);
-            incidents.value = await incidentsResponse.json();
+            // Refresh incidents using current filters
+            await fetchIncidents();
             filterCrimesByVisibleArea();
         } else {
             const errorText = await response.text();
@@ -482,6 +580,38 @@ function closeDialog() {
         console.log('Dialog validation failed. URL:', crime_url.value, 'Valid:', url_input.checkValidity());
     }
 }
+
+// Categorize crime codes into types
+function getCrimeCategory(code) {
+    // Violent crimes (crimes against a person)
+    const violentCrimes = [
+        100, 110, 120, // Murder/Homicide
+        210, 220, // Rape
+        300, 310, 311, 312, 313, 314, 320, 321, 322, 323, 324, 330, 331, 333, 334, 340, 341, 342, 343, 344, 350, 351, 352, 353, 360, 361, 363, 364, 370, 371, 372, 373, 374, // Robbery
+        400, 410, 411, 412, 420, 421, 422, 430, 431, 432, 440, 450, 451, 452, 453, // Aggravated Assault
+        810, 820, 822, 823, 830, 840, 841, 842, 843, 850, 851, 852, 853, 860, 861, 862, 863, 870, 871, 872, 873, 880, 882, 883, // Assault
+        1000, 1010, 1020, 1030, 1040, 1050, 1060, 1070, 1080, 1090, 1091, 1092, // Other Assault
+        2100, 2110, 2120, 2130 // Against Family
+    ];
+    
+    // Property crimes (crimes against property)
+    const propertyCrimes = [
+        500, 510, 511, 513, 515, 516, 520, 521, 523, 525, 526, 530, 531, 533, 535, 536, 540, 541, 543, 545, 546, 550, 551, 553, 555, 556, 560, 561, 563, 565, 566, // Burglary
+        600, 603, 610, 611, 612, 613, 614, 620, 621, 622, 623, 630, 631, 632, 633, 640, 641, 642, 643, 650, 651, 652, 653, 660, 661, 662, 663, // Theft
+        700, 710, 711, 712, 720, 721, 722, // Auto Theft
+        900, 901, 903, 905, 910, 911, 913, 915, 920, 921, 922, 923, 925, 930, 931, 933, 935, 940, 941, 942, 943, 945, 950, 951, 953, 955, 960, 961, 963, 965, 970, 971, 972, 973, 975, 980, 981, 982, 983, 985, // Arson
+        1200, 1210, 1220, 1230, 1231, 1240, 1241, 1242, 1243, 1244, 1245, 1246, 1250, // Stolen Property
+        1400, 1410, 1415, 1416, 1420, 1425, 1426, 1430, 1435, 1436 // Vandalism
+    ];
+    
+    if (violentCrimes.includes(code)) {
+        return 'violent';
+    } else if (propertyCrimes.includes(code)) {
+        return 'property';
+    } else {
+        return 'other';
+    }
+}
 </script>
 
 <template>
@@ -520,6 +650,71 @@ function closeDialog() {
             </div>
             <div class="cell small-2 medium-1">
                 <button class="button expanded" type="button" @click="goToLocation">Go</button>
+            </div>
+        </div>
+        
+        <!-- Filter Panel -->
+        <div class="grid-x grid-padding-x">
+            <div class="cell">
+                <h3 class="section-header">Filters</h3>
+                <div class="grid-x grid-padding-x">
+                    <!-- Incident Type Filters -->
+                    <div class="cell small-12 medium-6">
+                        <h4>Incident Types</h4>
+                        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 0.5rem;">
+                            <div v-for="(codes, groupName) in incidentTypeGroups" :key="groupName">
+                                <label>
+                                    <input 
+                                        type="checkbox" 
+                                        :checked="isIncidentTypeGroupSelected(groupName)"
+                                        @change="toggleIncidentTypeGroup(groupName)"
+                                    />
+                                    {{ groupName }}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Neighborhood Filters -->
+                    <div class="cell small-12 medium-6">
+                        <h4>Neighborhoods</h4>
+                        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 0.5rem;">
+                            <div v-for="neighborhood in neighborhoods" :key="neighborhood.id">
+                                <label>
+                                    <input 
+                                        type="checkbox" 
+                                        :value="neighborhood.id" 
+                                        v-model="filters.neighborhoods"
+                                    />
+                                    {{ neighborhood.name }}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Date Range and Max Incidents -->
+                <div class="grid-x grid-padding-x" style="margin-top: 1rem;">
+                    <div class="cell small-12 medium-3">
+                        <label>Start Date
+                            <input type="date" v-model="filters.start_date" />
+                        </label>
+                    </div>
+                    <div class="cell small-12 medium-3">
+                        <label>End Date
+                            <input type="date" v-model="filters.end_date" />
+                        </label>
+                    </div>
+                    <div class="cell small-12 medium-3">
+                        <label>Max Incidents
+                            <input type="number" v-model.number="filters.max_incidents" min="1" max="10000" />
+                        </label>
+                    </div>
+                    <div class="cell small-12 medium-3">
+                        <label>&nbsp;</label>
+                        <button class="button expanded" type="button" @click="applyFilters">Update</button>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -595,6 +790,24 @@ function closeDialog() {
         <div class="grid-x grid-padding-x">
             <div class="cell">
                 <h3 class="section-header">Crimes ({{ filteredIncidents.length }} incidents in visible area)</h3>
+                
+                <!-- Legend -->
+                <div class="crime-legend">
+                    <span class="legend-title">Crime Categories:</span>
+                    <span class="legend-item">
+                        <span class="legend-color violent-crime"></span>
+                        Violent Crimes
+                    </span>
+                    <span class="legend-item">
+                        <span class="legend-color property-crime"></span>
+                        Property Crimes
+                    </span>
+                    <span class="legend-item">
+                        <span class="legend-color other-crime"></span>
+                        Other Crimes
+                    </span>
+                </div>
+                
                 <div class="table-scroll">
                     <table class="crime-table">
                         <thead>
@@ -608,7 +821,7 @@ function closeDialog() {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="crime in filteredIncidents" :key="crime.case_number">
+                            <tr v-for="crime in filteredIncidents" :key="crime.case_number" :class="getCrimeCategory(crime.code) + '-crime'">
                                 <td>{{ crime.case_number }}</td>
                                 <td>{{ crime.date }}</td>
                                 <td>{{ crime.time }}</td>
@@ -790,5 +1003,71 @@ function closeDialog() {
     color: #666;
     font-style: italic;
     padding: 2rem !important;
+}
+
+.crime-legend {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: #f9f9f9;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.legend-title {
+    font-weight: bold;
+    color: #333;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.legend-color {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    border: 1px solid #999;
+}
+
+.violent-crime {
+    background-color: #ffcdd2;
+}
+
+.property-crime {
+    background-color: #fff9c4;
+}
+
+.other-crime {
+    background-color: #e1f5fe;
+}
+
+.crime-table tbody tr.violent-crime {
+    background: #ffcdd2;
+}
+
+.crime-table tbody tr.violent-crime:hover {
+    background: #ffb3ba;
+}
+
+.crime-table tbody tr.property-crime {
+    background: #fff9c4;
+}
+
+.crime-table tbody tr.property-crime:hover {
+    background: #fff59d;
+}
+
+.crime-table tbody tr.other-crime {
+    background: #e1f5fe;
+}
+
+.crime-table tbody tr.other-crime:hover {
+    background: #b3e5fc;
 }
 </style>
