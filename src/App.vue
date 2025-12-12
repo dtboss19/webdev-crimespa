@@ -630,7 +630,6 @@ function getCrimeCategory(code) {
                 <div class="loading-indicator">
                     <div class="spinner"></div>
                     <p><strong>{{ loading_message }}</strong></p>
-                    <p class="loading-hint">Render free tier servers sleep after inactivity. The first request may take 30-60 seconds to wake up.</p>
                 </div>
             </div>
         </div>
