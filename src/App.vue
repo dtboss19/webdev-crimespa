@@ -66,6 +66,7 @@ let loading_message = ref('');
 
 // Selected crime marker
 let selectedCrimeMarker = ref(null);
+let selectedCrime = ref(null);
 
 let map = reactive(
     {
@@ -663,7 +664,7 @@ async function selectCrime(crime) {
     
     selectedCrime.value = crime;
     
-const normalizedAddress = normalizeAddress(crime.block);
+    const normalizedAddress = normalizeAddress(crime.block);
     
     let searchAddress = normalizedAddress;
     if (normalizedAddress.includes('&') || normalizedAddress.includes(' AND ')) {
@@ -745,9 +746,10 @@ async function deleteIncident(caseNumber) {
             filteredIncidents.value = filteredIncidents.value.filter(i => i.case_number !== caseNumber);
             
             // Remove marker if this crime is selected
-            if (selectedCrimeMarker.value && selectedCrimeMarker.value.caseNumber === caseNumber) {
-                map.leaflet.removeLayer(selectedCrimeMarker.value.marker);
+            if (selectedCrimeMarker.value && selectedCrime.value?.case_number === caseNumber) {
+                map.leaflet.removeLayer(selectedCrimeMarker.value);
                 selectedCrimeMarker.value = null;
+                selectedCrime.value = null;
             }
             
             // Update neighborhood markers
@@ -759,93 +761,6 @@ async function deleteIncident(caseNumber) {
     } catch (error) {
         console.error('Error deleting incident:', error);
         alert('Error connecting to server');
-    }
-}
-
-// Parse address and fix obscured numbers (replace X with 0)
-function parseAddress(block) {
-    // Replace X in the street number only (first part before space)
-    const parts = block.split(' ');
-    if (parts.length > 0) {
-        // Replace X in the first part (street number) only
-        parts[0] = parts[0].replace(/X/g, '0');
-        return parts.join(' ');
-    }
-    return block;
-}
-
-// Select a crime and show it on the map
-async function selectCrime(crime) {
-    // Remove existing selected crime marker
-    if (selectedCrimeMarker.value) {
-        map.leaflet.removeLayer(selectedCrimeMarker.value.marker);
-        selectedCrimeMarker.value = null;
-    }
-    
-    // Parse and fix the address
-    const address = parseAddress(crime.block) + ', St Paul, MN';
-    
-    // Geocode the address
-    const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
-    
-    try {
-        const response = await fetch(nominatimUrl, {
-            headers: {
-                'User-Agent': 'StPaulCrimeApp/1.0'
-            }
-        });
-        const data = await response.json();
-        
-        if (data && data.length > 0) {
-            const lat = parseFloat(data[0].lat);
-            const lng = parseFloat(data[0].lon);
-            
-            // Create custom red marker icon
-            const redIcon = L.icon({
-                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-                popupAnchor: [1, -34],
-                shadowSize: [41, 41]
-            });
-            
-            // Create marker with custom icon
-            const marker = L.marker([lat, lng], { icon: redIcon }).addTo(map.leaflet);
-            
-            // Create popup content
-            const popupContent = `
-                <div style="min-width: 200px;">
-                    <strong>Case ${crime.case_number}</strong><br>
-                    <strong>Date:</strong> ${crime.date}<br>
-                    <strong>Time:</strong> ${crime.time}<br>
-                    <strong>Incident:</strong> ${getIncidentType(crime.code)}<br>
-                    <strong>Location:</strong> ${crime.block}<br>
-                    <button 
-                        onclick="deleteCrimeFromPopup('${crime.case_number}')"
-                        style="margin-top: 0.5rem; background: #D32323; color: white; border: none; padding: 0.5rem 1rem; cursor: pointer; border-radius: 3px; width: 100%;"
-                    >
-                        Delete Incident
-                    </button>
-                </div>
-            `;
-            
-            marker.bindPopup(popupContent).openPopup();
-            
-            // Store marker reference
-            selectedCrimeMarker.value = {
-                marker: marker,
-                caseNumber: crime.case_number
-            };
-            
-            // Pan to marker
-            map.leaflet.panTo([lat, lng]);
-        } else {
-            alert('Could not find location for this crime');
-        }
-    } catch (error) {
-        console.error('Error geocoding crime location:', error);
-        alert('Error finding crime location');
     }
 }
 
@@ -1072,23 +987,16 @@ if (typeof window !== 'undefined') {
                                 style="cursor: pointer;"
                             >
                                 <td>{{ crime.case_number }}</td>
-                            <tr v-for="crime in filteredIncidents" :key="crime.case_number" :class="getCrimeCategory(crime.code) + '-crime'">
-                                <td>
-                                    <a href="#" @click.prevent="selectCrime(crime)" style="color: #1779ba; text-decoration: underline; cursor: pointer;">
-                                        {{ crime.case_number }}
-                                    </a>
-                                </td>
                                 <td>{{ crime.date }}</td>
                                 <td>{{ crime.time }}</td>
                                 <td>{{ getIncidentType(crime.code) }}</td>
                                 <td>{{ getNeighborhoodName(crime.neighborhood_number) }}</td>
                                 <td>{{ normalizeAddress(crime.block) }}</td>
-                                <td>{{ crime.block }}</td>
                                 <td>
                                     <button 
                                         class="button alert small" 
                                         type="button" 
-                                        @click="deleteIncident(crime.case_number)"
+                                        @click.stop="deleteIncident(crime.case_number)"
                                         style="margin: 0;"
                                     >
                                         Delete
