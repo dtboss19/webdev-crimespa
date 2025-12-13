@@ -64,6 +64,10 @@ let form_success = ref('');
 let loading = ref(false);
 let loading_message = ref('');
 
+
+let selectedCrimeMarker = ref(null);
+let selectedCrime = ref(null);
+
 let map = reactive(
     {
         leaflet: null,
@@ -612,6 +616,112 @@ function getCrimeCategory(code) {
         return 'other';
     }
 }
+
+function normalizeAddress(block) {
+    if (!block) return '';
+    
+    const spaceIndex = block.indexOf(' ');
+    if (spaceIndex === -1) {
+        return block.replace(/X/g, '0');
+    }
+    
+    const firstPart = block.substring(0, spaceIndex);
+    const rest = block.substring(spaceIndex);
+    
+    const normalizedFirst = firstPart.replace(/X/g, '0');
+    
+    return normalizedFirst + rest;
+}
+
+// Remove the currently selected crime marker
+function removeSelectedCrimeMarker() {
+    if (selectedCrimeMarker.value) {
+        map.leaflet.removeLayer(selectedCrimeMarker.value);
+        selectedCrimeMarker.value = null;
+        selectedCrime.value = null;
+    }
+}
+
+function createCrimeIcon() {
+    return L.divIcon({
+        className: 'crime-marker-icon',
+        html: `<div style="
+            background-color: #e53935;
+            border: 3px solid #b71c1c;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+        "></div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+        popupAnchor: [0, -10]
+    });
+}
+
+async function selectCrime(crime) {
+    removeSelectedCrimeMarker();
+    
+    selectedCrime.value = crime;
+    
+const normalizedAddress = normalizeAddress(crime.block);
+    
+    let searchAddress = normalizedAddress;
+    if (normalizedAddress.includes('&') || normalizedAddress.includes(' AND ')) {
+        searchAddress = normalizedAddress
+            .replace('&', 'and')
+            .replace(' AND ', ' and ')
+            + ', St Paul, MN';
+    } else {
+        searchAddress = normalizedAddress + ', St Paul, MN';
+    }
+    
+    try {
+        const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchAddress)}`;
+        
+        const response = await fetch(nominatimUrl, {
+            headers: {
+                'User-Agent': 'StPaulCrimeApp/1.0'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+            const lat = parseFloat(data[0].lat);
+            const lng = parseFloat(data[0].lon);
+            
+            // Clamp to St. Paul bounds
+            const clampedLat = clampLat(lat);
+            const clampedLng = clampLng(lng);
+            
+            // Create marker with custom red icon
+            selectedCrimeMarker.value = L.marker([clampedLat, clampedLng], {
+                icon: createCrimeIcon()
+            }).addTo(map.leaflet);
+            
+            // Create popup content
+            const popupContent = `
+                <div style="min-width: 200px;">
+                    <strong style="font-size: 1.1em;">${getIncidentType(crime.code)}</strong><br>
+                    <hr style="margin: 0.5rem 0;">
+                    <strong>Date:</strong> ${crime.date}<br>
+                    <strong>Time:</strong> ${crime.time}<br>
+                    <strong>Location:</strong> ${normalizeAddress(crime.block)}<br>
+                    <strong>Case #:</strong> ${crime.case_number}
+                </div>
+            `;
+            
+            selectedCrimeMarker.value.bindPopup(popupContent).openPopup();
+            
+            // Pan to the marker
+            map.leaflet.panTo([clampedLat, clampedLng]);
+            
+        }
+    } catch (error) {
+        console.error('Geocoding error:', error);
+    }
+}
 </script>
 
 <template>
@@ -820,13 +930,19 @@ function getCrimeCategory(code) {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="crime in filteredIncidents" :key="crime.case_number" :class="getCrimeCategory(crime.code) + '-crime'">
+                            <tr 
+                                v-for="crime in filteredIncidents" 
+                                :key="crime.case_number" 
+                                :class="[getCrimeCategory(crime.code) + '-crime', { 'selected-crime': selectedCrime && selectedCrime.case_number === crime.case_number }]"
+                                @click="selectCrime(crime)"
+                                style="cursor: pointer;"
+                            >
                                 <td>{{ crime.case_number }}</td>
                                 <td>{{ crime.date }}</td>
                                 <td>{{ crime.time }}</td>
                                 <td>{{ getIncidentType(crime.code) }}</td>
                                 <td>{{ getNeighborhoodName(crime.neighborhood_number) }}</td>
-                                <td>{{ crime.block }}</td>
+                                <td>{{ normalizeAddress(crime.block) }}</td>
                             </tr>
                             <tr v-if="filteredIncidents.length === 0">
                                 <td colspan="6" class="no-data">No crimes to display. Enter API URL and pan/zoom the map.</td>
@@ -1068,5 +1184,22 @@ function getCrimeCategory(code) {
 
 .crime-table tbody tr.other-crime:hover {
     background: #b3e5fc;
+}
+
+.crime-table tbody tr.selected-crime {
+    outline: 3px solid #1779ba;
+    outline-offset: -3px;
+    position: relative;
+}
+
+.crime-table tbody tr.selected-crime td:first-child::before {
+    content: '▶';
+    margin-right: 0.5rem;
+    color: #1779ba;
+}
+
+.crime-marker-icon {
+    background: transparent !important;
+    border: none !important;
 }
 </style>
