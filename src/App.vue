@@ -770,6 +770,32 @@ if (typeof window !== 'undefined') {
         await deleteIncident(caseNumber);
     };
 }
+
+// Team member data - UPDATE WITH YOUR ACTUAL INFORMATION
+const teamMembers = [
+    {
+        name: "Dylan Goff",
+        photo: "/photos/dylan.jpeg",  // Update this to match your actual photo filename
+        bio: [
+            "Senior at University of St. Thomas.",
+            "Major in Computer Science and Data Science."
+        ]
+    },
+    {
+        name: "Team Member 2 Name",
+        photo: "https://via.placeholder.com/150",
+        bio: [
+            
+        ]
+    },
+    {
+        name: "Team Member 3 Name",
+        photo: "https://via.placeholder.com/150",
+        bio: [
+           
+        ]
+    }
+];
 </script>
 
 <template>
@@ -781,7 +807,7 @@ if (typeof window !== 'undefined') {
         <br/>
         <button class="button" type="button" @click="closeDialog">OK</button>
     </dialog>
-    <div class="grid-container ">
+    <div class="grid-container" style="padding-top: 2rem;">
         <!-- Loading Indicator -->
         <div v-if="loading" class="grid-x grid-padding-x">
             <div class="cell">
@@ -1010,6 +1036,51 @@ if (typeof window !== 'undefined') {
                     </table>
                 </div>
             </div>
+        </div>
+        
+        <!-- About Section -->
+        <div class="grid-x grid-padding-x" style="margin-top: 4rem;">
+            <div class="cell">
+                <h2 class="about-section-header">About the Project</h2>
+            </div>
+        </div>
+
+        <!-- Team Members -->
+        <div class="grid-x grid-padding-x">
+            <div class="cell">
+                <h3 class="section-header">About Us</h3>
+            </div>
+        </div>
+        <div class="grid-x grid-padding-x">
+            <div class="cell small-12 medium-4" v-for="member in teamMembers" :key="member.name">
+                <div class="team-card">
+                    <img :src="member.photo" :alt="member.name" class="team-photo">
+                    <h4>{{ member.name }}</h4>
+                    <p v-for="(line, index) in member.bio" :key="index">{{ line }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tools & Technologies Description -->
+        <div class="grid-x grid-padding-x">
+            <div class="cell">
+                <h3 class="section-header">Tools Used</h3>
+                <div class="tools-description">                   
+                    <ul>
+                        <li><strong>Vue.js:</strong>Framework used for this website</li>
+                        <li><strong>Leaflet.js:</strong> Used for our interactive map</li>
+                        <li><strong>Foundation CSS:</strong> Used for a responsive website</li>
+                        <li><strong>St. Paul Crime REST API:</strong>Data for our project</li>
+                        <li><strong>Nominatim:</strong>Used for map addressing</li>
+                        
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer spacing -->
+        <div class="grid-x grid-padding-x">
+            <div class="cell" style="height: 3rem;"></div>
         </div>
     </div>
 </template>
@@ -1271,5 +1342,75 @@ if (typeof window !== 'undefined') {
 .button.small {
     padding: 0.5rem 0.75rem;
     font-size: 0.8rem;
+}
+
+/* About Section Styles */
+.about-section-header {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #1779ba;
+    border-bottom: 4px solid #1779ba;
+    padding-bottom: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+.team-card {
+    background: #f9f9f9;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    min-height: 350px;
+}
+
+.team-photo {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 1rem;
+    border: 4px solid #1779ba;
+}
+
+.team-card h4 {
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+    color: #1779ba;
+}
+
+.team-card p {
+    font-size: 0.95rem;
+    color: #666;
+    line-height: 1.6;
+    text-align: left;
+    margin-bottom: 0.5rem;
+}
+
+.team-card p:last-of-type {
+    margin-bottom: 0;
+}
+
+.tools-description {
+    background: #f9f9f9;
+    padding: 2rem;
+    border-radius: 8px;
+    border-left: 4px solid #1779ba;
+    margin-bottom: 2rem;
+}
+
+.tools-description p {
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.tools-description ul {
+    margin-left: 1.5rem;
+    line-height: 1.8;
+}
+
+.tools-description li {
+    margin-bottom: 0.5rem;
 }
 </style>
