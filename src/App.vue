@@ -776,7 +776,7 @@ if (typeof window !== 'undefined') {
 const teamMembers = [
     {
         name: "Dylan Goff",
-        photo: "/photos/dylan.jpeg",  // Update this to match your actual photo filename
+        photo: "/photos/dylan.jpeg",
         bio: [
             "Senior at University of St. Thomas.",
             "Major in Computer Science and Data Science."
