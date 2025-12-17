@@ -1,5 +1,6 @@
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
+import crimeSiteDemoVideo from '../video/CrimeSite Demo.mp4'
 
 let crime_url = ref('');
 let dialog_err = ref(false);
@@ -782,10 +783,11 @@ const teamMembers = [
         ]
     },
     {
-        name: "Team Member 2 Name",
-        photo: "https://via.placeholder.com/150",
+        name: "Dylan Thomas",
+        photo: "/photos/dylant1.jpg",
         bio: [
-            
+            "Senior at University of St. Thomas.",
+             "Major in Computer Science and Economics."
         ]
     },
     {
@@ -1042,6 +1044,20 @@ const teamMembers = [
         <div class="grid-x grid-padding-x" style="margin-top: 4rem;">
             <div class="cell">
                 <h2 class="about-section-header">About the Project</h2>
+            </div>
+        </div>
+
+        <!-- Project Demo Video -->
+        <div class="grid-x grid-padding-x">
+            <div class="cell">
+                <video
+                    controls
+                    preload="metadata"
+                    style="max-width: 100%; display: block; margin: 1.5rem auto;"
+                >
+                    <source :src="crimeSiteDemoVideo" type="video/mp4" />
+                    Your browser does not support the video tag.
+                </video>
             </div>
         </div>
 
