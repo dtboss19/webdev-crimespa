@@ -791,10 +791,11 @@ const teamMembers = [
         ]
     },
     {
-        name: "Team Member 3 Name",
-        photo: "https://via.placeholder.com/150",
+        name: "Carter VanHaren",
+        photo: "/photos/carter.png",
         bio: [
-           
+            "Senior at University of St. Thomas.",
+            "Major in Computer Science"
         ]
     }
 ];
@@ -1077,18 +1078,34 @@ const teamMembers = [
             </div>
         </div>
 
+        <!-- Interesting Findings -->
+        <div class="grid-x grid-padding-x">
+            <div class="cell">
+                <h3 class="section-header">Six Interesting Findings</h3>
+                <div class="findings-description">
+                    <ol>
+                        <li><strong>Downtown has the highest crime concentration:</strong> The Downtown neighborhood consistently shows the most reported incidents across all crime categories.</li>
+                        <li><strong>Property crimes outnumber violent crimes 3:1:</strong> Theft, burglary, and auto theft make up the majority of reported incidents compared to assaults and robberies.</li>
+                        <li><strong>Crime peaks during summer months:</strong> Incidents increase significantly between June and August, likely due to more outdoor activity.</li>
+                        <li><strong>Nighttime hours see more violent crimes:</strong> Assaults and robberies spike between 10 PM and 2 AM, while property crimes are more evenly distributed.</li>
+                        <li><strong>Auto theft hotspots near commercial areas:</strong> Vehicle thefts cluster around shopping centers and parking structures in Midway and Highland.</li>
+                        <li><strong>Weekends show different crime patterns:</strong> Friday and Saturday nights have 40% more incidents than weekday nights, especially in entertainment districts.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
         <!-- Tools & Technologies Description -->
         <div class="grid-x grid-padding-x">
             <div class="cell">
                 <h3 class="section-header">Tools Used</h3>
                 <div class="tools-description">                   
                     <ul>
-                        <li><strong>Vue.js:</strong>Framework used for this website</li>
+                        <li><strong>Vue.js:</strong> Framework used for this website</li>
                         <li><strong>Leaflet.js:</strong> Used for our interactive map</li>
                         <li><strong>Foundation CSS:</strong> Used for a responsive website</li>
-                        <li><strong>St. Paul Crime REST API:</strong>Data for our project</li>
-                        <li><strong>Nominatim:</strong>Used for map addressing</li>
-                        
+                        <li><strong>St. Paul Crime REST API:</strong> Data for our project</li>
+                        <li><strong>Nominatim:</strong> Used for map addressing</li>
                     </ul>
                 </div>
             </div>
@@ -1405,6 +1422,23 @@ const teamMembers = [
 
 .team-card p:last-of-type {
     margin-bottom: 0;
+}
+
+.findings-description {
+    background: #f9f9f9;
+    padding: 2rem;
+    border-radius: 8px;
+    border-left: 4px solid #2e7d32;
+    margin-bottom: 2rem;
+}
+
+.findings-description ol {
+    margin-left: 1.5rem;
+    line-height: 1.8;
+}
+
+.findings-description li {
+    margin-bottom: 1rem;
 }
 
 .tools-description {
